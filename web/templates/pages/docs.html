@@ -163,7 +163,7 @@
         <input type="text" id="try-domain" value="example.com" placeholder="domain name"
             class="flex-1 px-4 py-2 bg-surface-950 border border-surface-600 rounded-lg text-breast font-mono text-sm
                    focus:outline-none focus:border-steel" />
-        <button onclick="tryLookup()" class="px-4 py-2 bg-steel text-breast rounded-lg hover:brightness-110 transition text-sm">
+        <button id="try-btn" class="px-4 py-2 bg-steel text-breast rounded-lg hover:brightness-110 transition text-sm">
             Lookup
         </button>
     </div>
@@ -175,8 +175,8 @@
 {{end}}
 
 {{define "scripts"}}
-<script>
-async function tryLookup() {
+<script nonce="{{.Nonce}}">
+document.getElementById('try-btn').addEventListener('click', async function() {
     const domain = document.getElementById('try-domain').value.trim();
     const result = document.getElementById('try-result');
     result.classList.remove('hidden');
@@ -189,6 +189,6 @@ async function tryLookup() {
     } catch (e) {
         result.textContent = 'Error: ' + e.message;
     }
-}
+});
 </script>
 {{end}}

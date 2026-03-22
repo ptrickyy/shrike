@@ -19,6 +19,7 @@ func CacheControl() gin.HandlerFunc {
 		}
 
 		path := c.Request.URL.Path
+
 		var maxAge int
 
 		switch {

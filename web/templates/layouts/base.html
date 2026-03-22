@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{block "title" .}}Shrike{{end}} — Free WHOIS History</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
+    <script nonce="{{.Nonce}}">
         tailwind.config = {
             theme: {
                 extend: {
@@ -36,7 +36,7 @@
         }
     </script>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <script src="/static/js/altcha.js" type="module"></script>
+
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; }
         [hx-indicator] .htmx-indicator { display: none; }

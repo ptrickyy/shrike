@@ -52,15 +52,12 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	// HTTP cache headers
 	r.Use(middleware.CacheControl())
 
-	// Health and metrics
+	// Health and metrics (metrics restricted to localhost)
 	r.GET("/health", handlers.Health(deps.Pool))
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	r.GET("/metrics", middleware.LocalhostOnly(), gin.WrapH(promhttp.Handler()))
 
 	// Static files
 	r.Static("/static", "web/static")
-
-	// ALTCHA challenge endpoint (before bot protection — must be accessible)
-	r.GET("/altcha-challenge", handlers.AltchaChallenge)
 
 	// Handlers
 	domainHandler := handlers.NewDomainHandler(deps.DomainRepo, deps.LookupService, deps.Cache)
@@ -131,8 +128,9 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		// Community
 		v1.POST("/contribute", contributionHandler.Submit)
 
-		// API key signup
+		// API key management
 		v1.POST("/keys/signup", apiKeyHandler.Signup)
+		v1.DELETE("/keys/:id", apiKeyHandler.Revoke)
 
 		// Operational
 		v1.GET("/stats", handlers.NotImplemented)

@@ -20,6 +20,17 @@ func NewRedactionHandler(repo *repository.RedactionRepository) *RedactionHandler
 
 // SubmitRequest handles the privacy page form submission.
 func (h *RedactionHandler) SubmitRequest(c *gin.Context) {
+	// CSRF check for browser form submissions (double-submit cookie pattern).
+	// API callers using JSON Content-Type don't use cookies, so skip for them.
+	if c.ContentType() != "application/json" {
+		cookieToken, err := c.Cookie("csrf_token")
+		formToken := c.PostForm("csrf_token")
+		if err != nil || cookieToken == "" || cookieToken != formToken {
+			c.JSON(http.StatusForbidden, gin.H{"error": "invalid or missing CSRF token"})
+			return
+		}
+	}
+
 	email := c.PostForm("email")
 	domain := c.PostForm("domain")
 	description := c.PostForm("description")

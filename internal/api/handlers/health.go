@@ -5,8 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"git.mp.ls/mpls/shrike/internal/version"
 )
 
 func Health(pool *pgxpool.Pool) gin.HandlerFunc {
@@ -14,17 +12,15 @@ func Health(pool *pgxpool.Pool) gin.HandlerFunc {
 		err := pool.Ping(c.Request.Context())
 		if err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status":  "unhealthy",
-				"version": version.Version,
-				"db":      "unreachable",
+				"status": "unhealthy",
+				"db":     "unreachable",
 			})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"status":  "healthy",
-			"version": version.Version,
-			"db":      "connected",
+			"status": "healthy",
+			"db":     "connected",
 		})
 	}
 }

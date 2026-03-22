@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -56,18 +57,24 @@ func (rl *APIRateLimiter) Middleware() gin.HandlerFunc {
 		var perMin int
 
 		// Check if authenticated
-		tier, exists := c.Get("api_tier")
+		tierVal, exists := c.Get("api_tier")
 		if exists {
-			keyID, _ := c.Get("api_key_id")
-			switch tier.(string) {
+			tierStr, ok := tierVal.(string)
+			if !ok {
+				tierStr = "free"
+			}
+			switch tierStr {
 			case "contributor":
 				perMin = rl.config.ContributorPerMin
-			case "free":
-				perMin = rl.config.FreeKeyPerMin
 			default:
 				perMin = rl.config.FreeKeyPerMin
 			}
-			limitKey = "key:" + keyID.(string)
+			keyIDVal, _ := c.Get("api_key_id")
+			keyIDStr, ok := keyIDVal.(string)
+			if !ok {
+				keyIDStr = c.ClientIP()
+			}
+			limitKey = "key:" + keyIDStr
 		} else {
 			perMin = rl.config.AnonymousPerMin
 			limitKey = "ip:" + c.ClientIP()
@@ -109,7 +116,7 @@ func (rl *APIRateLimiter) Middleware() gin.HandlerFunc {
 				retryAfter = int(time.Until(cl.bannedUntil).Seconds())
 			}
 
-			c.Header("Retry-After", "60")
+			c.Header("Retry-After", fmt.Sprintf("%d", retryAfter))
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"error":       "rate limit exceeded",
 				"retry_after": retryAfter,

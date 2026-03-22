@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"html/template"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -248,7 +251,12 @@ func (h *WebHandler) StatusPage(c *gin.Context) {
 }
 
 func (h *WebHandler) PrivacyPage(c *gin.Context) {
-	h.render(c, "privacy", nil)
+	// Generate CSRF token (double-submit cookie pattern)
+	b := make([]byte, 32)
+	rand.Read(b)
+	token := hex.EncodeToString(b)
+	c.SetCookie("csrf_token", token, 3600, "/", "", true, true)
+	h.render(c, "privacy", gin.H{"CSRFToken": token})
 }
 
 func (h *WebHandler) LicensePage(c *gin.Context) {
@@ -277,12 +285,27 @@ func (h *WebHandler) GraphPage(c *gin.Context) {
 func (h *WebHandler) render(c *gin.Context, name string, data interface{}) {
 	tmpl, ok := h.tmplMap[name]
 	if !ok {
-		c.String(http.StatusInternalServerError, "Template %q not found", name)
+		log.Printf("template %q not found", name)
+		c.String(http.StatusInternalServerError, "internal error")
 		return
 	}
+
+	// Inject CSP nonce into template data for all pages
+	nonce, _ := c.Get("csp_nonce")
+	var m gin.H
+	if data == nil {
+		m = gin.H{}
+	} else if gm, ok := data.(gin.H); ok {
+		m = gm
+	}
+	if m != nil {
+		m["Nonce"] = nonce
+		data = m
+	}
+
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(c.Writer, "base.html", data); err != nil {
-		c.String(http.StatusInternalServerError, "Template error: %v", err)
+		log.Printf("template %q execution failed: %v", name, err)
 	}
 }
 

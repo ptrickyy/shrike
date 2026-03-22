@@ -39,6 +39,7 @@
 <div class="bg-surface-900 border border-steel/30 rounded-lg p-6">
     <h2 class="text-lg font-semibold text-breast mb-3">Request Data Removal</h2>
     <form action="/api/v1/redaction-request" method="POST" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
         <div>
             <label for="email" class="block text-muted mb-1">Your email</label>
             <input type="email" name="email" id="email" required

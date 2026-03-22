@@ -10,6 +10,7 @@
 </div>
 
 <div id="lookup-spinner" class="bg-surface-900 border border-steel/30 rounded-lg p-8 mb-8 text-center"
+     data-domain="{{.DomainName}}"
      hx-get="/domain/{{.DomainName}}/poll"
      hx-trigger="every 2s"
      hx-swap="outerHTML"
@@ -21,13 +22,24 @@
     <p class="text-muted text-sm">Querying WHOIS servers for <strong class="text-breast">{{.DomainName}}</strong></p>
     <p class="text-surface-600 text-xs mt-2">This typically takes 3-10 seconds</p>
 </div>
-<script>
+<script nonce="{{.Nonce}}">
     setTimeout(function() {
         var el = document.getElementById('lookup-spinner');
         if (el) {
-            el.innerHTML = '<p class="text-breast text-lg mb-2">No WHOIS history found</p>' +
-                '<p class="text-muted">We couldn\'t retrieve WHOIS data for <strong>{{.DomainName}}</strong>.</p>' +
-                '<p class="text-muted text-sm mt-3">The WHOIS server may be unreachable or this TLD may not be supported yet.</p>';
+            var domain = el.getAttribute('data-domain');
+            el.textContent = '';
+            var p1 = document.createElement('p');
+            p1.className = 'text-breast text-lg mb-2';
+            p1.textContent = 'No WHOIS history found';
+            var p2 = document.createElement('p');
+            p2.className = 'text-muted';
+            p2.textContent = "We couldn't retrieve WHOIS data for " + domain + ".";
+            var p3 = document.createElement('p');
+            p3.className = 'text-muted text-sm mt-3';
+            p3.textContent = 'The WHOIS server may be unreachable or this TLD may not be supported yet.';
+            el.appendChild(p1);
+            el.appendChild(p2);
+            el.appendChild(p3);
             el.removeAttribute('hx-get');
             el.removeAttribute('hx-trigger');
             htmx.process(el);

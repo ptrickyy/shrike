@@ -18,6 +18,7 @@ import (
 type cachedKey struct {
 	id        int64
 	tier      string
+	owner     string
 	loadedAt  time.Time
 }
 
@@ -69,9 +70,10 @@ func (a *ApiKeyAuth) Middleware() gin.HandlerFunc {
 			a.setCached(hashHex, cached)
 		}
 
-		// Set tier info on context
+		// Set key metadata on context
 		c.Set("api_tier", cached.tier)
 		c.Set("api_key_id", fmt.Sprintf("%d", cached.id))
+		c.Set("api_key_owner", cached.owner)
 
 		c.Next()
 	}
@@ -115,15 +117,15 @@ func (a *ApiKeyAuth) setCached(hashHex string, ck *cachedKey) {
 
 func (a *ApiKeyAuth) loadFromDB(ctx context.Context, keyHash []byte) (*cachedKey, error) {
 	var id int64
-	var tier string
+	var tier, owner string
 	err := a.pool.QueryRow(ctx,
-		`SELECT id, tier FROM api_keys WHERE key_hash = $1 AND revoked_at IS NULL`,
-		keyHash).Scan(&id, &tier)
+		`SELECT id, tier, owner FROM api_keys WHERE key_hash = $1 AND revoked_at IS NULL`,
+		keyHash).Scan(&id, &tier, &owner)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &cachedKey{id: id, tier: tier, loadedAt: time.Now()}, nil
+	return &cachedKey{id: id, tier: tier, owner: owner, loadedAt: time.Now()}, nil
 }

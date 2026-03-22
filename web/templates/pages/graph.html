@@ -28,7 +28,7 @@
 {{end}}
 
 {{define "scripts"}}
-<script>
+<script nonce="{{.Nonce}}">
 const graphData = {{.GraphJSON}};
 const colors = {
     domain: '#4A7FA5', ip: '#87A96B', asn: '#D4A853',

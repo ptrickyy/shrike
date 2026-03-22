@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -236,7 +237,7 @@ func (sd *ServerDiscovery) RDAPURLForDomain(domain string) string {
 	if base == "" {
 		return ""
 	}
-	return base + "domain/" + strings.ToLower(domain)
+	return base + "domain/" + url.PathEscape(strings.ToLower(domain))
 }
 
 // Stats returns the number of known RDAP and WHOIS servers.

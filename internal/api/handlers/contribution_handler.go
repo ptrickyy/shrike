@@ -52,6 +52,7 @@ func (h *ContributionHandler) Submit(c *gin.Context) {
 	}
 
 	keyID, _ := c.Get("api_key_id")
+	contributor := c.GetString("api_key_owner")
 
 	// Create contribution record
 	var contribID int64
@@ -59,7 +60,7 @@ func (h *ContributionHandler) Submit(c *gin.Context) {
 		`INSERT INTO contributions (contributor, api_key_id, data_type, record_count, status)
 		 VALUES ($1, $2, $3, $4, 'pending')
 		 RETURNING id`,
-		keyID, keyID, req.DataType, len(req.Records)).Scan(&contribID)
+		contributor, keyID, req.DataType, len(req.Records)).Scan(&contribID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create contribution"})
 		return

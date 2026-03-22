@@ -28,7 +28,7 @@ type Config struct {
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://shrike:shrike@localhost:5432/shrike?sslmode=disable"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://shrike:shrike@localhost:5432/shrike?sslmode=require"),
 
 		Host: getEnv("SHRIKE_HOST", "127.0.0.1"),
 		Port: getEnvInt("SHRIKE_PORT", 8043),
