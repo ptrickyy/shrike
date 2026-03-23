@@ -1,124 +1,249 @@
-MPLS License (MPLS Principled Libre Software)
+MPLS License
+MPLS Principled Libre Software
 Version 1.0
 Copyright © 2025 MPLS LLC, Minneapolis, Minnesota
 
-PERMITTED USE
+===============================================================================
+DEFINITIONS
+===============================================================================
 
-Free to use for:
-  - Individuals, anywhere in the world
-  - Organizations under $1M annual revenue AND under 100K users
-  - Nonprofits and educational institutions of any size
-  - Researchers and students
-  - Open source projects
+"Software" means the source code, object code, documentation, and any other
+materials distributed under this license.
 
-Attribution required in all cases. Credit the origin.
-Credit the creators. That is the minimum the commons asks.
+"Licensor" means MPLS LLC, Minneapolis, Minnesota.
 
-LARGE ORGANIZATION USE
+"Licensee" means any individual or legal entity exercising rights under this
+license.
 
-Organizations exceeding $1M annual revenue OR 100K users
-must either:
+"Small Organization" means any entity with annual gross revenue below
+USD $1,000,000 AND fewer than 100,000 active users in the preceding
+twelve-month period.
 
-  (a) Contribute modifications back under this license, or
-  (b) Obtain a commercial license from MPLS LLC
+"Large Organization" means any entity that exceeds either threshold above.
 
-This is reciprocity, not punishment. The commons made
-your scale possible. The commons asks something back.
+"Modification" means any addition to, deletion from, or alteration of the
+Software, including but not limited to translations, adaptations, and
+derivative works.
 
-CREATOR RIGHTS
+"Distribution" means making the Software or any Modification available to
+any third party by any means.
 
-You own what you build with this software. This includes
-work created with AI assistance or any other tool.
+"Prohibited Use" means any use described in the PROHIBITED USE section
+of this license.
 
-The idea was yours. The direction was yours. The judgment
-of what to keep and what to discard was yours.
-That is authorship. That is ownership.
+===============================================================================
+GRANT OF RIGHTS
+===============================================================================
 
-No platform, institution, government, or AI system has
-any claim to what you made. A paintbrush doesn't own the
-painting. A compiler doesn't own the program. A powerful
-assistant doesn't own the idea it helped realize.
+Subject to the terms and conditions of this license, the Licensor grants
+the Licensee a worldwide, royalty-free, non-exclusive license to:
 
-If you made it, it is yours.
+  (a) Use, copy, and run the Software for any permitted purpose;
+  (b) Modify the Software;
+  (c) Distribute the Software and Modifications.
 
-PROHIBITED USE — NO EXCEPTIONS
+This grant is conditioned on full compliance with all terms of this license.
+Any use outside the scope of this grant is infringement of the Licensor's
+copyright.
 
-The following uses are prohibited regardless of payment,
-size, government mandate, or any other circumstance.
+===============================================================================
+CONDITIONS
+===============================================================================
 
-Violation immediately and irrevocably terminates all
-rights granted under this license. There is no cure
-period. There is no path to reinstatement.
+1. ATTRIBUTION
+
+   All copies and substantial portions of the Software, including
+   Modifications, must include:
+
+     (a) The original copyright notice;
+     (b) A reference to this license;
+     (c) The canonical license URL: github.com/mplsllc/mpls-license
+
+   Attribution must be reasonably visible to end users or, for software
+   libraries, included in documentation.
+
+2. SMALL ORGANIZATION USE
+
+   Small Organizations may use, modify, and distribute the Software under
+   the terms of this license without additional obligation beyond attribution.
+
+3. LARGE ORGANIZATION USE
+
+   Large Organizations must satisfy one of the following conditions:
+
+     (a) COPYLEFT: Any Modifications made to the Software and used in
+         production must be distributed under this license within ninety
+         (90) days of deployment; OR
+
+     (b) COMMERCIAL LICENSE: A separate written commercial license must
+         be obtained from the Licensor at mpls.llc before deployment.
+
+   Failure to satisfy either condition constitutes infringement.
+
+4. CREATOR RIGHTS
+
+   Works created using the Software belong to the human creator who
+   conceived, directed, and shaped them. This applies regardless of
+   what tools, including AI tools, were used in the process.
+
+   The Software may not be used to claim, transfer, or assert ownership
+   over works created by others using the Software.
+
+===============================================================================
+PROHIBITED USE
+===============================================================================
+
+The following uses are absolutely prohibited. Engaging in any Prohibited Use
+immediately and irrevocably terminates all rights granted under this license,
+without notice, without cure period, and without any obligation on the part
+of the Licensor to provide remedy.
+
+No commercial license, payment, or agreement of any kind can unlock or
+permit these uses. They are not restrictions that dissolve upon payment.
+They are the floor below which this Software will not go.
 
   1. SURVEILLANCE
-     This software may not be used to build systems that
-     track, monitor, or profile individuals without their
-     meaningful informed consent. This includes mass
-     surveillance infrastructure, location tracking,
-     behavioral profiling, social credit systems, or any
-     system designed to monitor people without their
-     knowledge.
+     The Software may not be used to monitor, track, or collect data on
+     individuals without their meaningful, informed, and freely given
+     consent. This includes but is not limited to: covert device tracking,
+     behavioral profiling without disclosure, and mass collection of
+     communications content.
 
   2. WEAPONS
-     This software may not be used in the development,
-     targeting, guidance, or operation of weapons systems
-     of any kind. This includes autonomous weapons, drone
-     targeting, missile guidance, cyberweapons designed
-     to cause physical harm, and any military application
-     where this software contributes to the harm or death
-     of people.
+     The Software may not be used in the development, operation, guidance,
+     targeting, or deployment of weapons systems of any kind. This includes
+     autonomous weapons, drone targeting, missile guidance, cyberweapons
+     designed to cause physical harm, and any military application in which
+     this Software contributes to the harm or death of persons.
 
   3. OPPRESSION
-     This software may not be used to suppress political
-     dissent, restrict freedom of expression, or identify,
-     target, or harm individuals for their beliefs,
-     ethnicity, religion, sexuality, or political views.
-     This includes enforcing laws that criminalize
-     identity or belief.
+     The Software may not be used to suppress political dissent, restrict
+     freedom of expression, or identify, target, or harm individuals on
+     the basis of their beliefs, ethnicity, religion, sexuality, gender
+     identity, or political views. This includes building or operating
+     infrastructure that enforces laws criminalizing identity or belief.
 
   4. MANIPULATION
-     This software may not be used to build systems
-     designed to manipulate human behavior, belief, or
-     decision-making without disclosure. This includes
-     algorithmic radicalization systems, coordinated
-     inauthentic behavior infrastructure, and mass
-     psychological manipulation platforms.
+     The Software may not be used to build systems designed to manipulate
+     human behavior, belief, or decision-making at scale without disclosure.
+     This includes algorithmic radicalization systems, coordinated
+     inauthentic behavior infrastructure, and mass psychological
+     manipulation platforms.
 
   5. AI TRAINING EXTRACTION
-     This software and works created with it may not be
-     used as training data for commercial AI systems
-     without the explicit permission of the human creator
-     of that work. The human creator retains full rights
-     regardless of what tools they used to create.
-     Automated collection without permission is a
-     violation of this license regardless of its
-     technical form.
+     Works created using the Software, and the Software itself, may not be
+     used as training data for commercial AI systems without the explicit
+     written permission of the human creator of those works. Automated
+     collection, scraping, or ingestion for AI training purposes without
+     such permission is a violation of this license regardless of its
+     technical form or the publicly accessible nature of the content.
 
   6. SECRET GOVERNMENT COMPLIANCE
-     If any entity is compelled by government order to
-     modify this software in ways that weaken its
-     security, privacy, or integrity guarantees, that
-     entity must publicly disclose the existence of such
-     an order to the maximum extent permitted by law.
-     Silent compliance with orders that harm users is
-     prohibited. If disclosure is legally prevented, the
-     entity must cease distribution rather than distribute
-     a secretly compromised version.
+     No entity distributing the Software may comply with any government
+     order that requires modification of the Software in ways that weaken
+     its security, privacy, or integrity guarantees, without publicly
+     disclosing the existence of such an order to the maximum extent
+     permitted by applicable law. If such disclosure is legally prevented,
+     the entity must cease distribution of the Software rather than
+     distribute a version whose compromise cannot be disclosed.
 
-These restrictions are absolute. They are not unlockable
-by payment. They are not subject to exception.
-They are the price of using this software.
-We consider it a fair price.
+===============================================================================
+TERMINATION
+===============================================================================
 
-WARRANTY
+1. AUTOMATIC TERMINATION FOR PROHIBITED USE
+   Any Prohibited Use immediately and automatically terminates all rights
+   granted under this license. No notice from the Licensor is required.
+   Termination for Prohibited Use is irrevocable and permanent.
 
-This software is provided as-is without warranty of any
-kind. The authors are not liable for damages arising from
-its use.
+2. TERMINATION FOR OTHER BREACH
+   For breaches other than Prohibited Use, the Licensor may terminate this
+   license upon written notice to the Licensee. The Licensee has thirty (30)
+   days from receipt of notice to cure the breach. If the breach is cured
+   within that period, the license is reinstated. If the breach is not cured,
+   the license terminates permanently at the end of the cure period.
 
-FULL LICENSE AND PHILOSOPHY
+3. EFFECT OF TERMINATION
+   Upon termination, the Licensee must immediately cease all use and
+   distribution of the Software and destroy all copies in its possession
+   or control. Sections that by their nature should survive termination —
+   including Prohibited Use, Warranty Disclaimer, Limitation of Liability,
+   and Governing Law — shall survive termination.
 
-See PHILOSOPHY.md for the complete text, values,
-reasoning, and the tradition this license continues.
+===============================================================================
+WARRANTY DISCLAIMER
+===============================================================================
 
-Contact: mp.ls
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. THE LICENSOR MAKES
+NO REPRESENTATION THAT THE SOFTWARE IS ERROR-FREE, SECURE, OR FIT FOR ANY
+PARTICULAR PURPOSE.
+
+===============================================================================
+LIMITATION OF LIABILITY
+===============================================================================
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING BUT NOT LIMITED TO LOSS OF
+DATA, LOSS OF PROFITS, OR BUSINESS INTERRUPTION) ARISING OUT OF OR IN
+CONNECTION WITH THE USE OR INABILITY TO USE THE SOFTWARE, EVEN IF THE
+LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+===============================================================================
+GOVERNING LAW AND JURISDICTION
+===============================================================================
+
+This license is governed by the laws of the State of Minnesota, United States
+of America, without regard to its conflict of law provisions.
+
+Any dispute arising under or in connection with this license shall be subject
+to the exclusive jurisdiction of the state and federal courts located in
+Hennepin County, Minnesota. Each party consents to personal jurisdiction in
+those courts.
+
+===============================================================================
+SEVERABILITY
+===============================================================================
+
+If any provision of this license is held to be invalid, illegal, or
+unenforceable under applicable law, that provision shall be modified to the
+minimum extent necessary to make it enforceable. If modification is not
+possible, the provision shall be severed. The remaining provisions of this
+license shall remain in full force and effect.
+
+The Prohibited Use provisions are severable from each other. Invalidity of
+one prohibition does not affect the validity of the others.
+
+===============================================================================
+NO WAIVER
+===============================================================================
+
+Failure by the Licensor to enforce any provision of this license shall not
+constitute a waiver of the Licensor's right to enforce that provision in the
+future. No waiver of any provision shall be effective unless made in writing
+and signed by the Licensor.
+
+===============================================================================
+ENTIRE AGREEMENT
+===============================================================================
+
+This license constitutes the entire agreement between the parties with
+respect to the Software. It supersedes all prior or contemporaneous
+understandings, communications, or agreements, written or oral, relating
+to its subject matter.
+
+The Licensor may publish revised versions of this license. Each version
+will be identified by a version number. The Licensee may use the Software
+under the version of the license under which they received it, or any
+later version published by the Licensor.
+
+===============================================================================
+CONTACT
+===============================================================================
+
+MPLS LLC
+Minneapolis, Minnesota
+mpls.llc
+github.com/mplsllc/mpls-license
