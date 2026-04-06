@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -59,19 +58,17 @@ func (r *DomainRepository) InsertSnapshotIfChanged(ctx context.Context, snap *mo
 	// Compute hash
 	snap.Hash = hash.HashDomainSnapshot(snap)
 
-	// Check if latest snapshot has the same hash
-	var existingHash []byte
+	// Check if any snapshot for this domain already has the same hash.
+	// This catches both consecutive duplicates (live crawls) and
+	// out-of-order imports (same capture from multiple archive sources).
+	var exists bool
 	err := r.pool.QueryRow(ctx,
-		`SELECT hash FROM domain_snapshots
-		 WHERE domain_id = $1
-		 ORDER BY observed_at DESC LIMIT 1`, snap.DomainID).
-		Scan(&existingHash)
-	if err != nil && err != pgx.ErrNoRows {
+		`SELECT EXISTS(SELECT 1 FROM domain_snapshots WHERE domain_id = $1 AND hash = $2)`,
+		snap.DomainID, snap.Hash).Scan(&exists)
+	if err != nil {
 		return false, fmt.Errorf("checking existing hash: %w", err)
 	}
-
-	if existingHash != nil && bytes.Equal(existingHash, snap.Hash) {
-		// No change — skip insertion
+	if exists {
 		return false, nil
 	}
 

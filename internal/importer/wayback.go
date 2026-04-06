@@ -9,30 +9,33 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/time/rate"
+
 	"git.mp.ls/mpls/shrike/internal/repository"
 )
 
 // WaybackImporter retrieves historical WHOIS data from the Internet Archive
 // Wayback Machine. It uses the CDX API to find archived WHOIS lookup pages
 // and the id_ URL pattern to fetch clean (unrewritten) HTML for parsing.
-//
-// Rate limit: 1 request/second by default. Contact info@archive.org for
-// higher limits if running a large backfill.
 type WaybackImporter struct {
 	domainRepo *repository.DomainRepository
 	pool       *pgxpool.Pool
 	client     *http.Client
-	delay      time.Duration
+	limiter    *rate.Limiter
+	workers    int
 }
 
 type WaybackStats struct {
-	DomainsProcessed int
-	CapturesFound    int
-	SnapshotsStored  int
-	Errors           int
+	DomainsProcessed atomic.Int64
+	DomainsSkipped   atomic.Int64
+	CapturesFound    atomic.Int64
+	SnapshotsStored  atomic.Int64
+	Errors           atomic.Int64
 }
 
 // WHOIS lookup sites with their URL patterns
@@ -42,23 +45,38 @@ var waybackWhoisSites = map[string]string{
 	"domaintools": "whois.domaintools.com/",
 }
 
-func NewWaybackImporter(domainRepo *repository.DomainRepository, pool *pgxpool.Pool) *WaybackImporter {
+func NewWaybackImporter(domainRepo *repository.DomainRepository, pool *pgxpool.Pool, workers int) *WaybackImporter {
+	if workers <= 0 {
+		workers = 3
+	}
+	// Internet Archive CDX API limit: 60 req/min. Stay under at 45 req/min
+	// shared across all workers. Burst of 3 to smooth out small gaps.
+	limiter := rate.NewLimiter(rate.Limit(0.75), 3)
+
 	return &WaybackImporter{
 		domainRepo: domainRepo,
 		pool:       pool,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		delay: 1 * time.Second, // Be polite to the Internet Archive
+		limiter: limiter,
+		workers: workers,
 	}
 }
 
 // ImportKnownDomains searches the Wayback Machine for historical WHOIS data
-// for domains already in the database.
+// for domains already in the database. Resumes automatically by skipping
+// domains that already have wayback_archive snapshots.
 func (w *WaybackImporter) ImportKnownDomains(ctx context.Context, limit int) (*WaybackStats, error) {
 	stats := &WaybackStats{}
 
-	query := `SELECT id, name FROM domains ORDER BY id`
+	// Fetch domains that do NOT already have wayback_archive snapshots (resume support)
+	query := `SELECT d.id, d.name FROM domains d
+		WHERE NOT EXISTS (
+			SELECT 1 FROM domain_snapshots ds
+			WHERE ds.domain_id = d.id AND ds.source = 'wayback_archive'
+		)
+		ORDER BY d.id`
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", limit)
 	}
@@ -83,30 +101,59 @@ func (w *WaybackImporter) ImportKnownDomains(ctx context.Context, limit int) (*W
 	}
 	rows.Close()
 
-	for i, d := range domains {
-		if i > 0 && i%50 == 0 {
-			log.Printf("Wayback progress: %d/%d domains, %d captures, %d snapshots stored",
-				i, len(domains), stats.CapturesFound, stats.SnapshotsStored)
-		}
+	log.Printf("Wayback import: %d domains to process (%d workers, 15 req/sec)",
+		len(domains), w.workers)
 
-		domainStats, err := w.importDomainCaptures(ctx, d.Name, d.ID)
-		if err != nil {
-			log.Printf("  Error processing %s: %v", d.Name, err)
-			stats.Errors++
-			continue
-		}
+	// Fan out to worker pool
+	work := make(chan domainRow, w.workers*2)
+	var wg sync.WaitGroup
 
-		stats.DomainsProcessed++
-		stats.CapturesFound += domainStats.CapturesFound
-		stats.SnapshotsStored += domainStats.SnapshotsStored
+	for i := 0; i < w.workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for d := range work {
+				if ctx.Err() != nil {
+					return
+				}
+				domainStats, err := w.importDomainCaptures(ctx, d.Name, d.ID)
+				if err != nil {
+					log.Printf("  Error processing %s: %v", d.Name, err)
+					stats.Errors.Add(1)
+					continue
+				}
+				stats.DomainsProcessed.Add(1)
+				stats.CapturesFound.Add(int64(domainStats.captures))
+				stats.SnapshotsStored.Add(int64(domainStats.stored))
+
+				processed := stats.DomainsProcessed.Load()
+				if processed%100 == 0 {
+					log.Printf("Wayback progress: %d/%d domains, %d captures, %d snapshots stored, %d errors",
+						processed, len(domains),
+						stats.CapturesFound.Load(),
+						stats.SnapshotsStored.Load(),
+						stats.Errors.Load())
+				}
+			}
+		}()
 	}
+
+	for _, d := range domains {
+		if ctx.Err() != nil {
+			break
+		}
+		work <- d
+	}
+	close(work)
+	wg.Wait()
 
 	return stats, nil
 }
 
 // ImportDomain searches for a specific domain's WHOIS history.
 func (w *WaybackImporter) ImportDomain(ctx context.Context, name string) (*WaybackStats, error) {
-	// Ensure domain exists
+	stats := &WaybackStats{}
+
 	tld := name
 	if idx := strings.LastIndex(name, "."); idx >= 0 {
 		tld = name[idx+1:]
@@ -116,7 +163,15 @@ func (w *WaybackImporter) ImportDomain(ctx context.Context, name string) (*Wayba
 		return nil, fmt.Errorf("upserting domain: %w", err)
 	}
 
-	return w.importDomainCaptures(ctx, name, domainID)
+	ds, err := w.importDomainCaptures(ctx, name, domainID)
+	if err != nil {
+		return nil, err
+	}
+	stats.DomainsProcessed.Add(1)
+	stats.CapturesFound.Add(int64(ds.captures))
+	stats.SnapshotsStored.Add(int64(ds.stored))
+
+	return stats, nil
 }
 
 // ScanSite finds all domains archived on a specific WHOIS lookup site.
@@ -128,7 +183,6 @@ func (w *WaybackImporter) ScanSite(ctx context.Context, site string, limit int) 
 		return nil, fmt.Errorf("unknown site %q (valid: whois, whoiscom, domaintools)", site)
 	}
 
-	// Query CDX for all URLs under this WHOIS site
 	cdxURL := fmt.Sprintf(
 		"http://web.archive.org/cdx/search/cdx?url=%s*&output=json&fl=original,timestamp&filter=statuscode:200&collapse=urlkey",
 		prefix)
@@ -157,8 +211,8 @@ func (w *WaybackImporter) ScanSite(ctx context.Context, site string, limit int) 
 	log.Printf("Covering %d unique domains", len(domainCaptures))
 
 	for domain, caps := range domainCaptures {
-		stats.DomainsProcessed++
-		stats.CapturesFound += len(caps)
+		stats.DomainsProcessed.Add(1)
+		stats.CapturesFound.Add(int64(len(caps)))
 
 		tld := domain
 		if idx := strings.LastIndex(domain, "."); idx >= 0 {
@@ -167,28 +221,34 @@ func (w *WaybackImporter) ScanSite(ctx context.Context, site string, limit int) 
 		domainID, err := w.domainRepo.Upsert(ctx, domain, tld)
 		if err != nil {
 			log.Printf("  Error upserting %s: %v", domain, err)
-			stats.Errors++
+			stats.Errors.Add(1)
 			continue
 		}
 
 		for _, cap := range caps {
 			stored, err := w.processCapture(ctx, cap, domain, domainID)
 			if err != nil {
-				stats.Errors++
+				stats.Errors.Add(1)
 				continue
 			}
 			if stored {
-				stats.SnapshotsStored++
+				stats.SnapshotsStored.Add(1)
 			}
 		}
 
-		if stats.DomainsProcessed%100 == 0 {
+		processed := stats.DomainsProcessed.Load()
+		if processed%100 == 0 {
 			log.Printf("Scan progress: %d domains, %d snapshots stored",
-				stats.DomainsProcessed, stats.SnapshotsStored)
+				processed, stats.SnapshotsStored.Load())
 		}
 	}
 
 	return stats, nil
+}
+
+type domainResult struct {
+	captures int
+	stored   int
 }
 
 type waybackCapture struct {
@@ -196,10 +256,9 @@ type waybackCapture struct {
 	Timestamp string
 }
 
-func (w *WaybackImporter) importDomainCaptures(ctx context.Context, name string, domainID int64) (*WaybackStats, error) {
-	stats := &WaybackStats{}
+func (w *WaybackImporter) importDomainCaptures(ctx context.Context, name string, domainID int64) (*domainResult, error) {
+	result := &domainResult{}
 
-	// Check all WHOIS sites for this domain
 	for siteName, prefix := range waybackWhoisSites {
 		targetURL := prefix + name
 		cdxURL := fmt.Sprintf(
@@ -208,7 +267,6 @@ func (w *WaybackImporter) importDomainCaptures(ctx context.Context, name string,
 
 		captures, err := w.queryCDX(ctx, cdxURL)
 		if err != nil {
-			// CDX 404 just means no captures
 			continue
 		}
 
@@ -216,21 +274,20 @@ func (w *WaybackImporter) importDomainCaptures(ctx context.Context, name string,
 			log.Printf("  %s: %d captures on %s", name, len(captures), siteName)
 		}
 
-		stats.CapturesFound += len(captures)
+		result.captures += len(captures)
 
 		for _, cap := range captures {
 			stored, err := w.processCapture(ctx, cap, name, domainID)
 			if err != nil {
-				stats.Errors++
 				continue
 			}
 			if stored {
-				stats.SnapshotsStored++
+				result.stored++
 			}
 		}
 	}
 
-	return stats, nil
+	return result, nil
 }
 
 func (w *WaybackImporter) processCapture(ctx context.Context, cap waybackCapture, domain string, domainID int64) (bool, error) {
@@ -239,10 +296,12 @@ func (w *WaybackImporter) processCapture(ctx context.Context, cap waybackCapture
 		return false, fmt.Errorf("parsing timestamp: %w", err)
 	}
 
-	// Use id_ to get the original page without Wayback rewriting
 	pageURL := fmt.Sprintf("https://web.archive.org/web/%sid_/%s", cap.Timestamp, cap.URL)
 
-	time.Sleep(w.delay)
+	// Rate limit instead of fixed sleep
+	if err := w.limiter.Wait(ctx); err != nil {
+		return false, err
+	}
 
 	html, err := w.fetchPage(ctx, pageURL)
 	if err != nil {
@@ -263,7 +322,6 @@ func (w *WaybackImporter) processCapture(ctx context.Context, cap waybackCapture
 	snap.Source = "wayback_archive"
 	snap.RawWhois = &whoisText
 
-	// Check for PII in historical pre-GDPR data
 	if snap.RegistrantEmail != nil || snap.RegistrantName != nil {
 		snap.ContainsPII = true
 	}
@@ -283,11 +341,28 @@ func (w *WaybackImporter) queryCDX(ctx context.Context, cdxURL string) ([]waybac
 	}
 	req.Header.Set("User-Agent", "Shrike/1.0 (WHOIS history database; https://shrike.mp.ls; contact: patrick@mp.ls)")
 
-	time.Sleep(w.delay)
-
-	resp, err := w.client.Do(req)
-	if err != nil {
+	if err := w.limiter.Wait(ctx); err != nil {
 		return nil, err
+	}
+
+	var resp *http.Response
+	for attempt := 0; attempt < 3; attempt++ {
+		resp, err = w.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode == 429 {
+			resp.Body.Close()
+			wait := time.Duration(60*(attempt+1)) * time.Second
+			log.Printf("  429 rate limited on CDX, backing off %v", wait)
+			select {
+			case <-time.After(wait):
+				continue
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		break
 	}
 	defer resp.Body.Close()
 
@@ -298,7 +373,6 @@ func (w *WaybackImporter) queryCDX(ctx context.Context, cdxURL string) ([]waybac
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 
-	// CDX returns JSON array: [["urlkey","timestamp",...], ["field1","field2",...], ...]
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024))
 	if err != nil {
 		return nil, err
@@ -319,7 +393,7 @@ func (w *WaybackImporter) queryCDX(ctx context.Context, cdxURL string) ([]waybac
 		return captures, nil
 	}
 
-	// Fallback: newline-delimited text (original timestamp url ...)
+	// Fallback: newline-delimited text
 	var captures []waybackCapture
 	scanner := bufio.NewScanner(strings.NewReader(string(body)))
 	for scanner.Scan() {
@@ -336,26 +410,41 @@ func (w *WaybackImporter) queryCDX(ctx context.Context, cdxURL string) ([]waybac
 }
 
 func (w *WaybackImporter) fetchPage(ctx context.Context, pageURL string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", pageURL, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("User-Agent", "Shrike/1.0 (WHOIS history database; https://shrike.mp.ls; contact: patrick@mp.ls)")
+	for attempt := 0; attempt < 3; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, "GET", pageURL, nil)
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("User-Agent", "Shrike/1.0 (WHOIS history database; https://shrike.mp.ls; contact: patrick@mp.ls)")
 
-	resp, err := w.client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
+		resp, err := w.client.Do(req)
+		if err != nil {
+			return "", err
+		}
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
+		if resp.StatusCode == 429 {
+			resp.Body.Close()
+			wait := time.Duration(60*(attempt+1)) * time.Second
+			log.Printf("  429 rate limited on fetch, backing off %v", wait)
+			select {
+			case <-time.After(wait):
+				continue
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+		}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
-	if err != nil {
-		return "", err
-	}
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
+		resp.Body.Close()
+		if err != nil {
+			return "", err
+		}
 
-	return string(body), nil
+		if resp.StatusCode != 200 {
+			return "", fmt.Errorf("HTTP %d", resp.StatusCode)
+		}
+
+		return string(body), nil
+	}
+	return "", fmt.Errorf("giving up after 3 attempts (429)")
 }

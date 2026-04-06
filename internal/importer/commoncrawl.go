@@ -382,7 +382,7 @@ func parseRawWhoisText(text string, observedAt time.Time) *models.DomainSnapshot
 			if t := parseFlexibleDate(value); t != nil {
 				snap.UpdatedDate = t
 			}
-		case "registry expiry date", "expiry date", "expire", "expires":
+		case "registry expiry date", "registrar registration expiration date", "expiry date", "expire", "expires":
 			if t := parseFlexibleDate(value); t != nil {
 				snap.ExpiryDate = t
 			}
@@ -403,6 +403,8 @@ func parseFlexibleDate(s string) *time.Time {
 	layouts := []string{
 		time.RFC3339,
 		"2006-01-02T15:04:05Z",
+		"2006-01-02T15:04:05-0700",
+		"2006-01-02T15:04:05-07:00",
 		"2006-01-02T15:04:05",
 		"2006-01-02 15:04:05",
 		"2006-01-02",

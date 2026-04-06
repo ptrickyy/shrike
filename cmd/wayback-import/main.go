@@ -45,8 +45,15 @@ func main() {
 	}
 	defer pool.Close()
 
+	workers := 3
+	if w := os.Getenv("SHRIKE_WAYBACK_WORKERS"); w != "" {
+		if n, err := strconv.Atoi(w); err == nil && n > 0 {
+			workers = n
+		}
+	}
+
 	domainRepo := repository.NewDomainRepository(pool)
-	wb := importer.NewWaybackImporter(domainRepo, pool)
+	wb := importer.NewWaybackImporter(domainRepo, pool, workers)
 
 	switch os.Args[1] {
 	case "known":
@@ -59,7 +66,7 @@ func main() {
 			log.Fatalf("Import failed: %v", err)
 		}
 		log.Printf("Wayback import complete: domains=%d captures=%d snapshots=%d",
-			stats.DomainsProcessed, stats.CapturesFound, stats.SnapshotsStored)
+			stats.DomainsProcessed.Load(), stats.CapturesFound.Load(), stats.SnapshotsStored.Load())
 
 	case "domain":
 		if len(os.Args) < 3 {
@@ -70,7 +77,7 @@ func main() {
 			log.Fatalf("Import failed: %v", err)
 		}
 		log.Printf("Wayback import for %s: captures=%d snapshots=%d",
-			os.Args[2], stats.CapturesFound, stats.SnapshotsStored)
+			os.Args[2], stats.CapturesFound.Load(), stats.SnapshotsStored.Load())
 
 	case "scan":
 		if len(os.Args) < 3 {
@@ -86,7 +93,7 @@ func main() {
 			log.Fatalf("Scan failed: %v", err)
 		}
 		log.Printf("Wayback scan complete: pages=%d domains=%d snapshots=%d",
-			stats.CapturesFound, stats.DomainsProcessed, stats.SnapshotsStored)
+			stats.CapturesFound.Load(), stats.DomainsProcessed.Load(), stats.SnapshotsStored.Load())
 
 	default:
 		log.Fatalf("Unknown command: %s", os.Args[1])
