@@ -70,13 +70,27 @@ func (s *Scheduler) MarkRunning(ctx context.Context, jobID int64) error {
 	return err
 }
 
-// MarkDone marks a job as completed and schedules the next crawl.
+// MarkDone marks a job as completed and reschedules it for the next periodic crawl.
 func (s *Scheduler) MarkDone(ctx context.Context, jobID int64, nextInterval time.Duration) error {
 	_, err := s.pool.Exec(ctx,
-		`UPDATE crawl_jobs SET state = 'done', error_count = 0, last_error = NULL,
+		`UPDATE crawl_jobs SET state = 'pending', error_count = 0, last_error = NULL,
 		 next_run_at = NOW() + $2
 		 WHERE id = $1`, jobID, nextInterval)
 	return err
+}
+
+// ReapStale resets jobs stuck in 'running' back to 'pending' if they've been
+// running longer than staleAfter, which happens when a worker crashes or is
+// killed mid-job and never gets to call MarkDone/MarkFailed.
+func (s *Scheduler) ReapStale(ctx context.Context, staleAfter time.Duration) (int64, error) {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE crawl_jobs SET state = 'pending'
+		 WHERE state = 'running' AND last_run_at < NOW() - $1::interval`,
+		staleAfter)
+	if err != nil {
+		return 0, fmt.Errorf("reaping stale jobs: %w", err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 // MarkFailed records a failure and applies backoff for retry.

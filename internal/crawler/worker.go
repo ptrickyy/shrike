@@ -62,13 +62,50 @@ func NewWorkerPool(
 	}
 }
 
-// Start launches the worker goroutines.
+// Start launches the worker goroutines and the stale-job reaper.
 func (wp *WorkerPool) Start(ctx context.Context) {
 	for i := 0; i < wp.numWorkers; i++ {
 		wp.wg.Add(1)
 		go wp.worker(ctx, i)
 	}
 	log.Printf("Started %d crawler workers", wp.numWorkers)
+
+	wp.wg.Add(1)
+	go wp.reapLoop(ctx)
+}
+
+// reapLoop periodically resets jobs orphaned by a crashed/killed worker
+// (stuck in 'running') back to 'pending' so they get retried.
+func (wp *WorkerPool) reapLoop(ctx context.Context) {
+	defer wp.wg.Done()
+
+	const staleAfter = 1 * time.Hour
+	reap := func() {
+		n, err := wp.scheduler.ReapStale(ctx, staleAfter)
+		if err != nil {
+			log.Printf("Reaper: error reaping stale jobs: %v", err)
+			return
+		}
+		if n > 0 {
+			log.Printf("Reaper: reset %d stale 'running' jobs back to 'pending'", n)
+		}
+	}
+
+	// Reap once immediately on startup to recover from a prior crash.
+	reap()
+
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-wp.stopCh:
+			return
+		case <-ticker.C:
+			reap()
+		}
+	}
 }
 
 // Stop signals all workers to stop and waits for them to finish.
