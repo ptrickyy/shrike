@@ -19,3 +19,8 @@
 *.sqlite3
 *.db
 .DS_Store
+
+# Auto-updated exclusions for large files & tooling
+__pycache__/
+*.pyc
+.codex-attachments/
