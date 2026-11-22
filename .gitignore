@@ -42,3 +42,8 @@ CLAUDE.md
 
 # Private reference docs
 /.private/
+
+# Auto-updated exclusions for large files & tooling
+__pycache__/
+*.pyc
+.codex-attachments/
